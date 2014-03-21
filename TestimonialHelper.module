@@ -1,0 +1,499 @@
+<?php
+/**
+ * Class TestimonialHelper
+ *
+ * Module do following things
+ *  - Create two templates testimonials and testimonial
+ *  - Create two fields groups related to the above templates.
+ *
+ *
+ */
+
+class TestimonialHelper extends WireData implements Module, Saveable {
+
+    /**
+     * Save the object's current state to database.
+     *
+     */
+    public function save() { }
+
+    /**
+     * Get an array of this item's saveable data, should match exact with the table it saves in
+     *
+     */
+    public function getTableData() { }
+
+    /**
+     * getModuleInfo is a module required by all modules to tell ProcessWire about them
+     *
+     * @return array
+     *
+     */
+    public static function getModuleInfo() {
+
+        return array(
+            'title' => 'Testimonial Helper',
+            'version' => 101,
+            'summary' => 'Create relevant variables and templates',
+            'singular' => true,
+            'autoload' => true,
+        );
+    }
+
+    /**
+     * Method to initialize the module.
+     *
+     * While the method is required, if you don't need it, then just leave the implementation blank.
+     *
+     * This is called after ProcessWire's API is fully ready for use and hooks. It is called at the end of the
+     * bootstrap process. This is before PW has started retrieving or rendering a page. If you need to have the
+     * API ready with the $page ready as well, then see the ready() method below this one.
+     *
+     */
+    public function init()
+    {
+        /* init stuff */
+    }
+
+    /**
+     * Install module
+     */
+    public function ___install() {
+
+        /* =========================================================================*/
+        /* Testimonials template and fields                                         */
+        /* =========================================================================*/
+
+        /* fetch the field group named 'testimonials-index' */
+        $fg = $this->fieldgroups->get('testimonials-index');
+
+        if (!$fg->id) {
+
+            /* Create new field group which is going to relate to our template */
+            $fg = new Fieldgroup();
+            $fg->name = 'testimonials-index';
+            $fg->add($this->fields->get('title'));
+
+            /* Get the body field */
+            $bodyField = wire('fields')->get('body');
+
+            if ($bodyField->id) {
+                /* if yes then add the body field into the field group */
+                $fg->add($this->fields->get('body'));
+            }
+            /* todo if body field is not there we can add it */
+
+            /* Save the field group */
+            $fg->save();
+            $this->message("'testimonials-index' field group added.");
+        }
+
+        /* Fetch the template named 'testimonials-index' */
+        $testimonials = $this->templates->get('testimonials-index');
+
+        if (!$testimonials->id) {
+
+            /* Create new template instance */
+            $testimonials = new Template();
+            $testimonials->name = 'testimonials-index';//Used different name other than file name
+            /* Set template label */
+            $testimonials->label = 'Customer experiences page (Parent page)';
+
+
+            /* Enable page numbers in url. This will need for pagination */
+            $testimonials->allowPageNum = 1;
+
+            /*
+             *  altFilename property will accept file-name
+             *  Note: template file needs to be placed under template directory.
+             *  Give name of the template file which is under template dir.
+             */
+            $testimonials->altFilename = 'testimonials';
+
+            $testimonials->fieldgroup = $fg; // add the field group
+            $testimonials->save();
+
+            $this->message("'testimonials-index' template added.");
+
+        }
+
+        /* =========================================================================*/
+        /* Testimonial single template and fields                                   */
+        /* =========================================================================*/
+
+        /* fetch the field group named 'testimonial-single' */
+        $fg = $this->fieldgroups->get('testimonial-single');
+        if (!$fg->id) {
+            /* Create new field group which is going to relate to our template */
+            $fg = new Fieldgroup();
+            $fg->name = 'testimonial-single';
+            $fg->add($this->fields->get('title'));
+
+            /* Get the body field */
+            $bodyField = wire('fields')->get('body');
+            /* If body field defined just add it */
+            if ($bodyField->id) {
+                /* if yes then add the body field into the field group */
+                $fg->add($this->fields->get('body'));
+            }
+
+            /* Get the image field */
+            $imageField = wire('fields')->get('image');
+            $imageFieldCreated = false;
+            if ($imageField->id){
+                /* Hope it allows one image */
+                $fg->add($this->fields->get('image'));
+            }else {
+                /* Create image field */
+                $field = new Field();
+                $field->type = $this->modules->get("FieldtypeImage");
+                $field->name = 'image';
+                $field->label = 'Image';
+                $field->set('maxFiles', 1);
+                $field->set('adminThumbs', 1);
+                $field->save();
+                $this->message("Field 'image' added.");
+
+                /* add image field into the field group */
+                $fg->add($this->fields->get('image'));
+                $imageFieldCreated = true;
+            }
+
+
+            /* Create client name field */
+
+            /* Fetch field named `client_name` */
+            $clientName = wire("fields")->get('client_name');
+
+            if (!$clientName->id) {
+
+                /* Create new field named client_name */
+                $field                  = new Field();
+                $field->type            = 'FieldtypeText';
+                $field->name            = 'client_name';
+                $field->label           = 'Client name';
+                $field->description     = 'Name of the client who had the experience with';
+                $field->save();
+
+                $this->message("Field 'client_name' added.");
+
+
+                /* add client_name field into the field group */
+                $fg->add($this->fields->get('client_name'));
+            }
+
+            /* Create client_company */
+            $clientCompany  = wire('fields')->get('client_company');
+
+            if (!$clientCompany->id) {
+
+                /* Create new field named client_company */
+                $field                  = new Field();
+                $field->type            = 'FieldtypeText';
+                $field->name            = 'client_company';
+                $field->label           = 'Client company';
+                $field->description     = 'Name of the company who had the experience with';
+                $field->save();
+
+                $this->message("Field 'client_company' added.");
+
+                /* add client_name field into the field group */
+                $fg->add($this->fields->get('client_company'));
+            }
+
+            /* Create client_company_url */
+            $clientCompanyUri   = wire('fields')->get('client_company_url');
+
+            if (!$clientCompanyUri->id){
+
+                /* Create new field named client_company_url */
+                $field              = new Field();
+                $field->type        = 'FieldtypeURL';
+                $field->name        = 'client_company_url';
+                $field->label       = 'Client company URL';
+                $field->description = 'Web site URL of client who had the experience with';
+                $field->save();
+
+                $this->message("Field 'client_company_url' added.");
+
+                /* add client_name field into the field group */
+                $fg->add($this->fields->get('client_company_url'));
+            }
+
+            /* Save the field group */
+            $fg->save();
+            $this->message("'testimonial-single' field group added.");
+        }
+
+        /* Fetch the template named 'testimonial-single' */
+        $testimonial = $this->templates->get('testimonial-single');
+
+        if (!$testimonial->id) {
+            /* Create new template instance */
+            $testimonial = new Template();
+            $testimonial->name = 'testimonial-single';//Used different name other than file name
+            /* Set template label */
+            $testimonial->label = 'Customer experience page (Child page)';
+
+            /*
+             *  altFilename property will accept file-name
+             *  Note: template file needs to be placed under template directory.
+             *  Give name of the template file which is under template dir.
+             */
+            $testimonial->altFilename = 'testimonial';
+
+            $testimonial->fieldgroup = $fg; // add the field group
+            $testimonial->save();
+
+            $this->message("'testimonial-single' template added.");
+        }
+
+
+        /*
+         * Manage templates relations
+         * eg : testimonials-index is the root template and testimonials-single would be the child
+         */
+
+
+        /* Setting up relationship in-between parent and child */
+        /* --------------------------------------------------- */
+        /* Set parent template ids */
+        $testimonials->parentTemplates = array(1); /* 1 is the home page always ! */
+        /* Set child template ids */
+        $testimonials->childTemplates = array($testimonial->id);
+
+        /* Setting up relationship in-between parent and child */
+        /* --------------------------------------------------- */
+        /* Set parent template ids */
+        $testimonial->parentTemplates  = array($testimonials->id);
+        /* Disable having child pages  */
+        $testimonial->noChildren = 1;
+
+        /* Save all */
+        $testimonials->save();
+        $testimonial->save();
+
+    }
+
+    /**
+     * Uninstall the module
+     *
+     */
+    public function ___uninstall() {
+
+        /* ======================================================================== */
+        /* Removing Testimonials template and field group                           */
+        /* ======================================================================== */
+
+        /* Fetch testimonial index template */
+        $testimonials = $this->templates->get('testimonials-index');
+        /* Fetch testimonial index field group */
+        $testimonialsFieldGroup = $this->fieldgroups->get('testimonials-index');
+
+        if ($testimonials->id && $testimonials->getNumPages() > 0) {
+            /* Meaning that these template been used. So throw an exception would save our life */
+            throw new WireException("Can't uninstall because 'testimonials-index' template been used by some pages.");
+        }else if ($testimonials->id) {
+            /* Meaning that we can delete our template and field group. Because it was not been used. */
+            wire('templates')->delete($testimonials);
+            $this->message("'testimonials-index' template removed.");
+            wire('fieldgroups')->delete($testimonialsFieldGroup);
+            $this->message("'testimonials-index' field group removed.");
+        }
+
+        /* ======================================================================== */
+        /* Removing Testimonial template and field group                            */
+        /* ======================================================================== */
+
+        /* Fetch testimonial single template */
+        $testimonial = $this->templates->get('testimonial-single');
+        /* Fetch testimonial single field group */
+        $testimonialFieldGroup = $this->fieldgroups->get('testimonial-single');
+
+        if ($testimonial->id && $testimonials->getNumPages() > 0) {
+            /* Meaning that these template been used. So throw an exception would save our life */
+            throw new WireException("Can't uninstall because 'testimonials-single' template been used by some pages.");
+        }else if ($testimonial->id) {
+            /* Meaning that we can delete our template and field group. Because it was not been used. */
+            wire('templates')->delete($testimonial);
+            $this->message("'testimonial-single' template removed.");
+            wire('fieldgroups')->delete($testimonialFieldGroup);
+            $this->message("'testimonial-single' field group removed.");
+        }
+
+
+        /* ======================================================================== */
+        /* Removing fields created by the module                                    */
+        /* ======================================================================== */
+
+        /* Remove `client_name` field */
+
+        $clientName = wire("fields")->get('client_name');
+
+        if ($clientName->id && $clientName->numFieldgroups() > 0) {
+            throw new WireException("Can't remove field `client_name` since it been used on some field groups.");
+        }else {
+            /* Remove field `client_name `*/
+            wire('fields')->delete($clientName);
+            $this->message("`client_name` field removed.");
+        }
+
+
+        /* Remove client_company field */
+
+        $clientCompany  = wire('fields')->get('client_company');
+        if ($clientCompany->id && $clientCompany->numFieldgroups() > 0) {
+            throw new WireException("Can't remove field `client_company` since it been used on some field groups.");
+        }else {
+            /* Remove field `client_company `*/
+            wire('fields')->delete($clientCompany);
+            $this->message("`client_company` field removed.");
+        }
+
+        /* Remove client company URI */
+
+        $clientCompanyUri   = wire('fields')->get('client_company_url');
+
+        if ($clientCompanyUri->id && $clientCompanyUri->numFieldgroups() > 0) {
+            throw new WireException("Can't remove field `client_company_url` since it been used on some field groups.");
+        }else {
+            /* Remove field `client_company_url` */
+            wire('fields')->delete($clientCompanyUri);
+            $this->message("`client_company_url` field removed.");
+        }
+
+    }
+
+    /**
+     * getCustomerExperienceSideBarSummaryTiles method will returned a markup version of
+     * all testimonials.
+     * @param int $limit
+     * @return string
+     */
+    public function getCustomerExperienceSideBarSummaryTiles($limit = 10) {
+
+        $pages = wire('pages')->find("template=testimonial-single, limit=${limit}");
+
+
+
+        $pagination = $pages->renderPager(
+            array(
+                'nextItemLabel' => "&raquo;",
+                'previousItemLabel' => "&laquo;",
+                'listMarkup' => "<ul class='pagination'>{out}</ul>",
+                'itemMarkup' => "<li class='{class}'>{out}</li>",
+                'linkMarkup' => "<a href='{url}'><span>{out}</span></a>",
+                'currentItemClass' => "active",
+            )
+        );
+
+        $counter = 1;
+        $str = '';
+
+        $page = wire('page');
+
+        if(!$page->template->allowPageNum) {
+            // notify developer they need to enable pagination in the template
+            $str .= "<p class='alert label'>" .
+                "This template needs page numbers enabled to support pagination!<br />" .
+                "Go to: Admin - Setup - Templates - Edit: '$page->template' - URLs " .
+                "</p>";
+        }
+
+        $str .= '<div>' . $pagination . '</div>';
+
+        foreach($pages as $page) {
+
+            $str .= "<div class='row testimonial-row'>"; /* open row div */
+            $str .= "<hr/>";
+            $str .= "<div class='col-md-4'>"; /* open col-md-3 div */
+
+            if ($page->image){
+
+                $imageSrc = $page->image->url;
+                $imageDescription = $page->image->description;
+                $str .= "<img src='${imageSrc}' alt='{$imageDescription}' class='img-responsive'/>";
+            }else {
+                $moduleDefaultImageSrc = wire('config')->urls->siteModules . 'MearchTestimonials/media/no-image.png';
+                $str .= "<img src='${moduleDefaultImageSrc}' class='img-responsive'/>";
+            }
+
+            $str .= "</div>"; /* close col-md-3 div */
+            $str .= "<div class='col-md-8 '>"; /* open col-md-9 div */
+            $str .= "<h3>{$page->title}</h3>";
+            $str .= "<p>{$page->body}</p>";
+            if ($page->client_name)
+                if ($page->client_company)
+                    if ($page->client_company_url)
+                        $str    .= $page->client_name . ' - ' . '<a href="' . $page->client_company_url . '" title="'
+                            . $page->client_company . '"  rel="nofollow" >' . $page->client_company_url . '</a>';
+                    else
+                        $str    .= '~ ' . $page->client_name . ' - ' . $page->client_company;
+                else
+                    $str    .= '~ ' . $page->client_name;
+            else
+                $str    .= '';
+
+            $str .= "</div>"; /* close col-md-9* div */
+            $str .= "<hr/>";
+            $str .= "</div>"; /* close row div */
+
+        }
+
+        $str .= '<div>' . $pagination . '</div>';
+
+
+        return $str;
+
+    }
+
+    /**
+     * Get All Testimonials Method is the non-styled version of testimonials where developer can
+     * markup the styles as they needed.
+     *
+     * Return array of testimonials
+     * @param int $limit
+     * @return PageArray | false
+     */
+    public function getAllTestimonials($limit = 10) {
+        $pages = wire('pages')->find("template=testimonial-single, limit=${limit}");
+
+        if (!count($pages))
+            return false;
+
+        return $pages;
+    }
+
+    /**
+     * Render pagination links
+     *
+     * This uses ProcessWire's MarkupPagerNav module and overrides the default
+     * markup to focus on Foundation-specific pagination styles.
+     *
+     */
+    public function renderPagination(PageArray $items) {
+
+        $page = wire('page');
+        if(!$page->template->allowPageNum) {
+            // notify developer they need to enable pagination in the template
+            return 	"<p class='alert label'>" .
+                "This template needs page numbers enabled to support pagination!<br />" .
+                "Go to: Admin - Setup - Templates - Edit: '$page->template' - URLs " .
+                "</p>";
+        }
+
+        $pagination = $items->renderPager(
+            array(
+                'nextItemLabel' => "&raquo;",
+                'previousItemLabel' => "&laquo;",
+                'listMarkup' => "<ul class='pagination'>{out}</ul>",
+                'itemMarkup' => "<li class='{class}'>{out}</li>",
+                'linkMarkup' => "<a href='{url}'><span>{out}</span></a>",
+                'currentItemClass' => "active",
+            )
+        );
+
+        return $pagination;
+
+    }
+}
